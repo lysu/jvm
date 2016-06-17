@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"strings"
+	"github.com/lysu/jvm/classpath"
 )
 
 var javaCmd *cobra.Command
@@ -12,6 +14,7 @@ type CmdConfig struct {
 	helpFlag    bool
 	versionFlag bool
 	cpOption    string
+	jreOption   string
 	class       string
 	args        []string
 }
@@ -25,7 +28,7 @@ func main() {
 				fmt.Println("version 0.0.1")
 				return
 			}
-			if len(args) > 1 {
+			if len(args) > 0 {
 				cmdConfig.class = args[0]
 				cmdConfig.args = args[1:]
 			}
@@ -40,10 +43,21 @@ func main() {
 	javaCmd.Flags().BoolVar(&cmdConfig.helpFlag, "?", false, "print help message")
 	javaCmd.Flags().BoolVar(&cmdConfig.versionFlag, "version", false, "print version and exit")
 	javaCmd.Flags().StringVarP(&cmdConfig.cpOption, "classpath", "c", "", "classpath")
+	javaCmd.Flags().StringVar(&cmdConfig.jreOption, "Xjre", "", "path to jre")
 	javaCmd.Execute()
 }
 
 func startVM(cmd *CmdConfig) {
-	fmt.Printf("classpath:%s class:%s args:%v\n",
-		cmd.cpOption, cmd.class, cmd.args)
+	cp := classpath.Parse(cmd.jreOption, cmd.cpOption)
+	fmt.Printf("classpath:%v class:%v args:%v jre:%v\n",
+		cp, cmd.class, cmd.args, cmd.jreOption)
+
+	className := strings.Replace(cmd.class, ".", "/", -1)
+	classData, _, err := cp.ReadClass(className)
+	if err != nil {
+		fmt.Printf("Could not find or load main class %s\n", cmd.class)
+		return
+	}
+
+	fmt.Printf("class data:%v\n", classData)
 }
