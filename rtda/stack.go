@@ -1,4 +1,4 @@
-package rdata
+package rtda
 
 type Stack struct {
 	maxSize int
@@ -28,7 +28,7 @@ func (s *Stack) pop() *Frame {
 	top := s._top
 	s._top = top.lower
 	top.lower = nil
-	s.size --
+	s.size--
 	return top
 }
 

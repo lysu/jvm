@@ -1,11 +1,11 @@
-package rdata
+package rtda
 
 type Thread struct {
 	pc    int
 	stack *Stack
 }
 
-func NewStack() *Thread {
+func NewThread() *Thread {
 	return &Thread{
 		stack: newStack(1024),
 	}
@@ -29,4 +29,8 @@ func (t *Thread) PopFrame() *Frame {
 
 func (t *Thread) CurrentFrame() *Frame {
 	return t.stack.top()
+}
+
+func (self *Thread) NewFrame(maxLocals, maxStack uint) *Frame {
+	return NewFrame(self, maxLocals, maxStack)
 }

@@ -1,5 +1,4 @@
-package rdata
+package rtda
 
 type Object struct {
-
 }

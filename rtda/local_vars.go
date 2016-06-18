@@ -1,4 +1,4 @@
-package rdata
+package rtda
 
 import "math"
 

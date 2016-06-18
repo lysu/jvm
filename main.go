@@ -2,10 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/lysu/jvm/classfile"
+	"github.com/lysu/jvm/classpath"
+	"github.com/lysu/jvm/instructions"
+	"github.com/lysu/jvm/instructions/base"
+	"github.com/lysu/jvm/rtda"
 	"github.com/spf13/cobra"
 	"strings"
-	"github.com/lysu/jvm/classpath"
-	"github.com/lysu/jvm/classfile"
 )
 
 var javaCmd *cobra.Command
@@ -55,12 +58,16 @@ func startVM(cmd *CmdConfig) {
 
 	className := strings.Replace(cmd.class, ".", "/", -1)
 	cf := loadClass(className, cp)
-	fmt.Println(cmdConfig.class)
-	printClassInfo(cf)
+	mainMethod := getMainMethod(cf)
+	if mainMethod != nil {
+		interpret(mainMethod)
+	} else {
+		fmt.Printf("Main method not found in class %s\n", cmd.class)
+	}
 }
 
 func loadClass(className string, cp *classpath.Classpath) *classfile.ClassFile {
-	classData, _ , err := cp.ReadClass(className)
+	classData, _, err := cp.ReadClass(className)
 	if err != nil {
 		panic(err)
 	}
@@ -71,19 +78,54 @@ func loadClass(className string, cp *classpath.Classpath) *classfile.ClassFile {
 	return cf
 }
 
-func printClassInfo(cf *classfile.ClassFile) {
-	fmt.Printf("version: %v.%v\n", cf.MajorVersion(), cf.MinorVersion())
-	fmt.Printf("constants count: %v\n", len(cf.ConstantPool()))
-	fmt.Printf("access flags: 0x%x\n", cf.AccessFlags())
-	fmt.Printf("this class: %v\n", cf.ClassName())
-	fmt.Printf("super class: %v\n", cf.SuperClassName())
-	fmt.Printf("interfaces: %v\n", cf.InterfaceNames())
-	fmt.Printf("fields count: %v\n", len(cf.Fields()))
-	for _, f := range cf.Fields() {
-		fmt.Printf("  %s\n", f.Name())
-	}
-	fmt.Printf("methods count: %v\n", len(cf.Methods()))
+func getMainMethod(cf *classfile.ClassFile) *classfile.MemberInfo {
 	for _, m := range cf.Methods() {
-		fmt.Printf("  %s\n", m.Name())
+		if m.Name() == "main" && m.Descriptor() == "([Ljava/lang/String;)V" {
+			return m
+		}
+	}
+	return nil
+}
+
+func interpret(methodInfo *classfile.MemberInfo) {
+	codeAttr := methodInfo.CodeAttribute()
+	maxLocals := codeAttr.MaxLocals()
+	maxStack := codeAttr.MaxStack()
+	bytecode := codeAttr.Code()
+
+	thread := rtda.NewThread()
+	frame := thread.NewFrame(maxLocals, maxStack)
+	thread.PushFrame(frame)
+
+	defer catchErr(frame)
+	loop(thread, bytecode)
+}
+
+func catchErr(frame *rtda.Frame) {
+	if r := recover(); r != nil {
+		fmt.Printf("LocalVars:%v\n", frame.LocalVars())
+		fmt.Printf("OperandStack:%v\n", frame.OperandStack())
+		panic(r)
+	}
+}
+
+func loop(thread *rtda.Thread, bytecode []byte) {
+	frame := thread.PopFrame()
+	reader := &base.BytecodeReader{}
+
+	for {
+		pc := frame.NextPC()
+		thread.SetPC(pc)
+
+		// decode
+		reader.Reset(bytecode, pc)
+		opcode := reader.ReadUint8()
+		inst := instructions.NewInstruction(opcode)
+		inst.FetchOperands(reader)
+		frame.SetNextPC(reader.PC())
+
+		// execute
+		fmt.Printf("pc:%2d inst:%T %v\n", pc, inst, inst)
+		inst.Execute(frame)
 	}
 }
