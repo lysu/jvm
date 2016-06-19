@@ -3,8 +3,8 @@ package classpath
 import (
 	"archive/zip"
 	"fmt"
-	"path/filepath"
 	"io/ioutil"
+	"path/filepath"
 )
 
 type ZipEntry struct {

@@ -33,6 +33,6 @@ type Index16Instruction struct {
 	Index uint
 }
 
-func (i Index16Instruction) FetchOperands(reader *BytecodeReader) {
+func (i *Index16Instruction) FetchOperands(reader *BytecodeReader) {
 	i.Index = uint(reader.ReadUint16())
 }

@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/lysu/jvm/classfile"
 	"github.com/lysu/jvm/classpath"
 	"github.com/lysu/jvm/instructions"
 	"github.com/lysu/jvm/instructions/base"
 	"github.com/lysu/jvm/rtda"
+	"github.com/lysu/jvm/rtda/heap"
 	"github.com/spf13/cobra"
 	"strings"
 )
@@ -56,9 +56,11 @@ func startVM(cmd *CmdConfig) {
 	fmt.Printf("classpath:%v class:%v args:%v jre:%v\n",
 		cp, cmd.class, cmd.args, cmd.jreOption)
 
+	classLoader := heap.NewClassLoader(cp)
+
 	className := strings.Replace(cmd.class, ".", "/", -1)
-	cf := loadClass(className, cp)
-	mainMethod := getMainMethod(cf)
+	mainClass := classLoader.LoadClass(className)
+	mainMethod := mainClass.GetMainMethod()
 	if mainMethod != nil {
 		interpret(mainMethod)
 	} else {
@@ -66,39 +68,13 @@ func startVM(cmd *CmdConfig) {
 	}
 }
 
-func loadClass(className string, cp *classpath.Classpath) *classfile.ClassFile {
-	classData, _, err := cp.ReadClass(className)
-	if err != nil {
-		panic(err)
-	}
-	cf, err := classfile.Parse(classData)
-	if err != nil {
-		panic(err)
-	}
-	return cf
-}
-
-func getMainMethod(cf *classfile.ClassFile) *classfile.MemberInfo {
-	for _, m := range cf.Methods() {
-		if m.Name() == "main" && m.Descriptor() == "([Ljava/lang/String;)V" {
-			return m
-		}
-	}
-	return nil
-}
-
-func interpret(methodInfo *classfile.MemberInfo) {
-	codeAttr := methodInfo.CodeAttribute()
-	maxLocals := codeAttr.MaxLocals()
-	maxStack := codeAttr.MaxStack()
-	bytecode := codeAttr.Code()
-
+func interpret(method *heap.Method) {
 	thread := rtda.NewThread()
-	frame := thread.NewFrame(maxLocals, maxStack)
+	frame := thread.NewFrame(method)
 	thread.PushFrame(frame)
 
 	defer catchErr(frame)
-	loop(thread, bytecode)
+	loop(thread, method.Code())
 }
 
 func catchErr(frame *rtda.Frame) {
