@@ -14,6 +14,10 @@ func newLocalVars(maxLocals uint) LocalVars {
 	return nil
 }
 
+func (s LocalVars) SetSlot(index uint, slot Slot) {
+	s[index] = slot
+}
+
 func (s LocalVars) SetInt(index uint, val int32) {
 	s[index].num = val
 }

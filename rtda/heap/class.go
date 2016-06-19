@@ -18,15 +18,23 @@ type Class struct {
 	staticVars        Slots
 }
 
+func (c *Class) SuperClass() *Class {
+	return c.superClass
+}
+
+func (c *Class) Name() string {
+	return c.name
+}
+
 func (c *Class) StaticVars() Slots {
 	return c.staticVars
 }
 
 func (c *Class) isAccessibleTo(other *Class) bool {
-	return c.IsPublic() || c.getPackageName() == other.getPackageName()
+	return c.IsPublic() || c.GetPackageName() == other.GetPackageName()
 }
 
-func (c *Class) getPackageName() string {
+func (c *Class) GetPackageName() string {
 	if i := strings.LastIndex(c.name, "/"); i >= 0 {
 		return c.name[:i]
 	}

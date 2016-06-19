@@ -13,6 +13,10 @@ func NewThread() *Thread {
 	}
 }
 
+func (self *Stack) isEmpty() bool {
+	return self._top == nil
+}
+
 func (t *Thread) PC() int {
 	return t.pc
 }
@@ -28,6 +32,9 @@ func (t *Thread) PushFrame(frame *Frame) {
 func (t *Thread) PopFrame() *Frame {
 	return t.stack.pop()
 }
+func (t *Thread) TopFrame() *Frame {
+	return t.CurrentFrame()
+}
 
 func (t *Thread) CurrentFrame() *Frame {
 	return t.stack.top()
@@ -35,4 +42,8 @@ func (t *Thread) CurrentFrame() *Frame {
 
 func (self *Thread) NewFrame(method *heap.Method) *Frame {
 	return NewFrame(self, method)
+}
+
+func (self *Thread) IsStackEmpty() bool {
+	return self.stack.isEmpty()
 }
