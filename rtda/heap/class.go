@@ -16,6 +16,15 @@ type Class struct {
 	instanceSlotCount uint
 	staticSlotCount   uint
 	staticVars        Slots
+	initStarted       bool
+}
+
+func (c *Class) InitStarted() bool {
+	return c.initStarted
+}
+
+func (c *Class) StartInit() {
+	c.initStarted = true
 }
 
 func (c *Class) SuperClass() *Class {
@@ -70,4 +79,8 @@ func (self *Class) getStaticMethod(name, descriptor string) *Method {
 		}
 	}
 	return nil
+}
+
+func (self *Class) GetClinitMethod() *Method {
+	return self.getStaticMethod("<clinit>", "()V")
 }
