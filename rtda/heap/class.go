@@ -19,6 +19,10 @@ type Class struct {
 	initStarted       bool
 }
 
+func (c *Class) Loader() *ClassLoader {
+	return c.loader
+}
+
 func (c *Class) InitStarted() bool {
 	return c.initStarted
 }
@@ -54,15 +58,18 @@ func (c *Class) ConstantPool() *ConstantPool {
 	return c.constantPool
 }
 
-func (c *Class) NewObject() *Object {
-	return newObject(c)
+func (self *Class) isJlObject() bool {
+	return self.name == "java/lang/Object"
+}
+func (self *Class) isJlCloneable() bool {
+	return self.name == "java/lang/Cloneable"
+}
+func (self *Class) isJioSerializable() bool {
+	return self.name == "java/io/Serializable"
 }
 
-func newObject(class *Class) *Object {
-	return &Object{
-		class:  class,
-		fields: newSlots(class.instanceSlotCount),
-	}
+func (c *Class) NewObject() *Object {
+	return newObject(c)
 }
 
 func (self *Class) GetMainMethod() *Method {
@@ -83,4 +90,23 @@ func (self *Class) getStaticMethod(name, descriptor string) *Method {
 
 func (self *Class) GetClinitMethod() *Method {
 	return self.getStaticMethod("<clinit>", "()V")
+}
+
+func (self *Class) ArrayClass() *Class {
+	arrayClassName := getArrayClassName(self.name)
+	return self.loader.LoadClass(arrayClassName)
+}
+
+func (self *Class) getField(name, descriptor string, isStatic bool) *Field {
+	for c := self; c != nil; c = c.superClass {
+		for _, field := range c.fields {
+			if field.IsStatic() == isStatic &&
+				field.name == name &&
+				field.descriptor == descriptor {
+
+				return field
+			}
+		}
+	}
+	return nil
 }

@@ -3,6 +3,7 @@ package constants
 import (
 	"github.com/lysu/jvm/instructions/base"
 	"github.com/lysu/jvm/rtda"
+	"github.com/lysu/jvm/rtda/heap"
 )
 
 // Push item from run-time constant pool
@@ -21,7 +22,8 @@ func (self *LDC_W) Execute(frame *rtda.Frame) {
 
 func _ldc(frame *rtda.Frame, index uint) {
 	stack := frame.OperandStack()
-	cp := frame.Method().Class().ConstantPool()
+	class := frame.Method().Class()
+	cp := class.ConstantPool()
 	c := cp.GetConstant(index)
 
 	switch c.(type) {
@@ -29,7 +31,9 @@ func _ldc(frame *rtda.Frame, index uint) {
 		stack.PushInt(c.(int32))
 	case float32:
 		stack.PushFloat(c.(float32))
-	// case string:
+	case string:
+		internedStr := heap.JString(class.Loader(), c.(string))
+		stack.PushRef(internedStr)
 	// case *heap.ClassRef:
 	// case MethodType, MethodHandle
 	default:
