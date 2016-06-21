@@ -14,6 +14,10 @@ func newLocalVars(maxLocals uint) LocalVars {
 	return nil
 }
 
+func (self LocalVars) GetThis() *heap.Object {
+	return self.GetRef(0)
+}
+
 func (s LocalVars) SetSlot(index uint, slot Slot) {
 	s[index] = slot
 }

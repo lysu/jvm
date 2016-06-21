@@ -1,6 +1,9 @@
 package heap
 
-import "strings"
+import (
+	"github.com/lysu/jvm/classfile"
+	"strings"
+)
 
 type Class struct {
 	accessFlags       uint16
@@ -17,6 +20,36 @@ type Class struct {
 	staticSlotCount   uint
 	staticVars        Slots
 	initStarted       bool
+	jClass            *Object
+	sourceFile        string
+}
+
+func newClass(cf *classfile.ClassFile) *Class {
+	class := &Class{}
+	class.accessFlags = cf.AccessFlags()
+	class.name = cf.ClassName()
+	class.superClassName = cf.SuperClassName()
+	class.interfaceNames = cf.InterfaceNames()
+	class.constantPool = newConstantPool(class, cf.ConstantPool())
+	class.fields = newFields(class, cf.Fields())
+	class.methods = newMethods(class, cf.Methods())
+	class.sourceFile = getSourceFile(cf)
+	return class
+}
+
+func (c *Class) SourceFile() string {
+	return c.sourceFile
+}
+
+func getSourceFile(cf *classfile.ClassFile) string {
+	if sfAttr := cf.SourceFileAttribute(); sfAttr != nil {
+		return sfAttr.FileName()
+	}
+	return "Unknown" // todo
+}
+
+func (c *Class) JClass() *Object {
+	return c.jClass
 }
 
 func (c *Class) Loader() *ClassLoader {
@@ -76,6 +109,10 @@ func (self *Class) GetMainMethod() *Method {
 	return self.getStaticMethod("main", "([Ljava/lang/String;)V")
 }
 
+func (self *Class) JavaName() string {
+	return strings.Replace(self.name, "/", ".", -1)
+}
+
 func (self *Class) getStaticMethod(name, descriptor string) *Method {
 	for _, method := range self.methods {
 		if method.IsStatic() &&
@@ -105,6 +142,38 @@ func (self *Class) getField(name, descriptor string, isStatic bool) *Field {
 				field.descriptor == descriptor {
 
 				return field
+			}
+		}
+	}
+	return nil
+}
+
+func (self *Class) IsPrimitive() bool {
+	_, ok := primitiveTypes[self.name]
+	return ok
+}
+
+func (self *Class) GetRefVar(fieldName, fieldDescriptor string) *Object {
+	field := self.getField(fieldName, fieldDescriptor, true)
+	return self.staticVars.GetRef(field.slotId)
+}
+func (self *Class) SetRefVar(fieldName, fieldDescriptor string, ref *Object) {
+	field := self.getField(fieldName, fieldDescriptor, true)
+	self.staticVars.SetRef(field.slotId, ref)
+}
+
+func (self *Class) GetInstanceMethod(name, descriptor string) *Method {
+	return self.getMethod(name, descriptor, false)
+}
+
+func (self *Class) getMethod(name, descriptor string, isStatic bool) *Method {
+	for c := self; c != nil; c = c.superClass {
+		for _, method := range c.methods {
+			if method.IsStatic() == isStatic &&
+				method.name == name &&
+				method.descriptor == descriptor {
+
+				return method
 			}
 		}
 	}
